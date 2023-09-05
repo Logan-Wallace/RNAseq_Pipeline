@@ -1,0 +1,324 @@
+---------------------------------
+Lab Notebook - BCCA File Download
+---------------------------------
+Logan Wallace
+-------------
+8/02/2023
+---------
+
+### Project Repo
+meshinchi_s/workingDir/scripts/lwallac2/Python/BCCA_File_Download
+
+# Purpose
+The purpose of this project is to first download and then process all of our RNAseq data from BCCA.
+
+Rhonda has asked that I download all of the sequencing data from BCCA that is coming to us in batches of patients. This data is very large and will take a long time (potentially days) to download. As such, it's not really tenable to just drag them over because any interuption of the connection would hault the process at a point we are not going to be aware of. For this reason, my goal is to write a script to have this data downloading in the background while I can work on other projects during it's download. I think this might be a very good time to learn about the workflow manager NextFlowand Amanda mentioned this was something Jenny did with some success!
+
+I want to have a script that will allow us to download data in large batches to the AWS bucket that is robust to connection failures or other interuptions and will let us know about progress and which files have been successfully downloaded. 
+
+Motuz is something that Amanda mentioned and it looks like it can be used to transfer large amounts of data to and from storage locations at Fred Hutch such as from Fast to AWS or other. 
+- https://sciwiki.fredhutch.org/compdemos/motuz/
+
+I think I have successfully set up a Motuz request to download all of the BCCA RNAseq data. I've also asked Rhonda to provide the manifest for this data so that it's incoming files and downloads can be tracked and downloaded. But Motuz was very easy to use and I think anyone in the lab could perform it! The great thing is it easily batches jobs out hosted on Rhino so I can allow that to run while I work on other projects.
+
+The next step would be to write a NextFlow pipeline to first process the BAM/FASTQ files we are provided into counts files with Kallisto and then send out files to the AWS bucket after they have been processed. The final step would be to push the counts files to the fast drive.
+
+To get counts files from this data I am hoping to find Amanda's scripts for Kallisto, not only to reduce time in learning how to write a Kallisto script but also so that the counts files we create are generated in as close to the same manner as the existing files. 
+
+-------
+8.24.23
+-------
+
+I think that all the files have now been downloaded via Motuz and Rhonda has just given me the manifests so I am going to check and make sure that they have all been downloaded and then go from there. 
+
+One question is whether I should be performing this in Python or R. Either would probably be fine but let's look at what most of the NextFlow script is written in so I can keep it a little more consistent. 
+
+Jenny's github repo with this can be found here - https://github.com/Meshinchi-Lab/batch_pipeline.git
+
+I'm beginning to get a bit worried that Jenny's script is going to be pretty opaque to me and that there is a good likelihood I could miss something. Maybe this would be better done writing my own script...
+She did write a lot of this code 3+ years ago. I think maybe I should write my own and use hers as a reference. That way I can add it to my own github repo and really have written it on my own. 
+
+This would be a great time to start a github repo! Let's create one... Named it 'RNAseq_Processing_Pipeline'
+
+I also created a 'dev' branch that I will be working in and then loading my changes to the main branch, should do this daily. 
+
+I can write in multiple languages and I am planning on using NextFlow to manage this pipeline. I think I should first write a python script that can handle perform all the manifest processing and generation. 
+
+--------
+Outline
+--------
+
+What are the things that this pipeline is going to need to do?
+
+1. It must accept a manifest file that has all of the RNAseq samples listed and then it must check and make sure that all of the files have been downloaded. Ideally, it could also check and see if all the files seem to be complete. Maybe it could look for file size or other sorts of file errors prior to starting the generation of summary files. 
+
+2. It will take the BAMs / FASTQ files and generate counts files from them, RAW counts, TPM converted, etc. As desired. 
+
+3. It will concatentate our counts files together into one large file. 
+
+4. It will store our files in the appropriate location after processing. It must move our files from the Scratch drive where they are initially downloaded to the AWS bucket once they raw files have been processed and store the concatenated counts files on the FAST drive.
+
+It should also perform all these processes while giving updates as to where in the process the run is at and by saving progress somehow along the way to ensure that the entire process doesn't need to be re-run. 
+
+------------------------------------------------
+Checking the Manifest - Manifest_Confirmation.py
+------------------------------------------------
+
+I think this will be best done using a Python script. 'Manifest_Confirmation.py'
+
+Rhonda has provided me with the manifests. I need to look and see how I should be recording which samples have been received and which, if any, are absent.For now, these files are going to be downloaded in this repo.
+
+Pseudocode
+
+1. Read in the manifest and create a list of the sample names that are evident
+2. Look into the directory that we have obstensibly stored all of our files and get a list of everything that is stored here
+3. Compare the lists and make sure that all samples are evident. Save a list of the samples that are not and then
+
+This might be something that could be best done interactively in a jupyternotebook but perhaps for the time being I can just make this code a little more brittle and come back to it once I've completed the initial check. Essentially the manifest is not in a format that is easily read into and accessed by a simple dataframe and more work would have to go in to find where the lines are in specific that represent our sample data. For now, I will manually collate the manifest data and then I will load it into python. 
+
+What format are the sample names in?
+Manifest - "Sample ID" - "TARGET-20-PATCYP-03A-01R"
+
+Scratch - 
+The files on the Scratch drive are all in folders. The FASTQ.GZ files are under - F126920 which accords to samples but I'm not yet sure what the mapping there is. Must need to speak with Rhonda about that one. 
+
+Rhonda is working on getting the file mapping for me. They did provide it in the email but this is pretty lame. - They provided them in the body of the damn email. That's LAME. However I was able to load them into an excel workbook and parse the names for the files that we already have. But this was invonvenient and will be prone to error. It is not a good method going forward. 
+
+Running this python script is taking a while to crawl through the files. In the mean time there are some improvements that I could make to my code and I've asked AI to help me do this!
+    1. Error logging
+    2. Exception handling
+    3. Using with open to automate the closing of files
+
+Once this script has shown that it runs properly I can get it running on a compute cluster because it is taking a while and then I can get it into a Nextflow script. 
+
+After the script was run I found that 4 files had been missed. I went back and found them manually and found that they had simply been missed when doing the bulk download on Motuz. Notably, they were all at the top of the 2023-08-09 folder and so I likely just missed downloading these when I manually selected them. This is a great check to make sure that all were found. 
+
+------------------------------
+Running on the Cluster - GIZMO
+------------------------------
+
+https://sciwiki.fredhutch.org/scicomputing/compute_overview/
+
+https://sciwiki.fredhutch.org/scicomputing/compute_jobs/
+
+The batch system here at Fred Hutch is SLURM. This is what manages jobs and resources available on the cluster.
+
+sbatch myscript.sh my-output
+
+To SSH to Rhino - 
+ssh -Y lwallac2@rhino
+
+Was able to run my python script on Rhino and using all the same paths. The next step is to write a script to batch out the Kallisto job to the gizmo cluster for all of the files that we have received. A good question is, is it better to try and run many of these files at once or back to back to back for >300 files? 
+
+------------------------------
+Background reading on NextFlow
+------------------------------
+
+https://www.nextflow.io/docs/latest/getstarted.html
+
+https://sciwiki.fredhutch.org/hdc/workflows/workflow_background/
+
+I think that this Nextflow process should be happening on the Gizmo cluster as opposed to being run on a Rhino node. This is likely to be a computationally intense process and should be batched and will not be run interactively. 
+
+Using Jenny's Code as a template will be very helpful. 
+https://github.com/Meshinchi-Lab/batch_pipeline/
+
+Jenny says "The workflow is managed with Nextflow and all data processing is carried on AWS Batch. The input files, whether BAM or Fastq, must be hosted in an S3 bucket prior to running the workflow." but it looks like the actual processing doesn't run on the cloud platform and all computing is done after downloading the files from S3 and then re-uploading them. I think we can skip this step altogether and run the analysis with the files in the 90-day Scratch drive and then upload the files after they have been processed. 
+
+Jenny runs Kallisto on the FASTQ files and not the aligned BAM files but I'm wondering if this is the best option. Perhaps for sake of performing the analysis as close to how she did it and maintaining consistency in our analyses. She does have an example for the BAM files though...
+
+Here are the params that Jenny passed for running Kallisto -- 
+
+	#Check for strandedness and choose flag for Kallisto psuedoalignment
+	if [[ $stranded_type == "None" ]]
+	then
+		kallisto quant -i $index -o ${Sample}_$ref \
+				-b 30 -t 4 --fusion --bias $R1 $R2
+
+	else
+		kallisto quant -i $index -o ${Sample}_$ref \
+				-b 30 -t 4 --fusion --bias --$stranded_type $R1 $R2
+
+
+Downloading Kallisto - 
+https://pachterlab.github.io/kallisto/manual
+
+The command we are going to be making use of is kallisto quant . Documentation below - 
+
+kallisto 0.50.0
+Computes equivalence classes for reads and quantifies abundances
+
+Usage: kallisto quant [arguments] FASTQ-files
+
+Required arguments:
+-i, --index=STRING            Filename for the kallisto index to be used for quantification
+-o, --output-dir=STRING       Directory to write output to
+
+Optional arguments:
+-b, --bootstrap-samples=INT   Number of bootstrap samples (default: 0)
+    --seed=INT                Seed for the bootstrap sampling (default: 42)
+    --plaintext               Output plaintext instead of HDF5
+    --single                  Quantify single-end reads
+    --single-overhang         Include reads where unobserved rest of fragment is predicted to lie outside a transcript
+    --fr-stranded             Strand specific reads, first read forward
+    --rf-stranded             Strand specific reads, first read reverse
+-l, --fragment-length=DOUBLE  Estimated average fragment length
+-s, --sd=DOUBLE               Estimated standard deviation of fragment length (default: -l, -s values are estimated from paired end data, but are required when using --single)
+-t, --threads=INT             Number of threads to use (default: 1)
+
+First, we need to have an index to be used for quantification. Let's see what Jenny used...
+Also, Jenny created a docker image to download the same version of kallisto that she had when she made all of the other counts files. 
+Where is the index being built? 
+
+-b specifies the number of bootstrap samples. These are output to HDF5 files because they may create a large amount of data. 
+-t is the number of threads and it looks like Jenny defaults this to 4
+--fusion is an argument that jenny passed and is only able to be run on versions prior to 0.50.0 and it looks for counts which were not aligned but look to be the product of a gene fusion. (I should use her docker image when I actually go to run the code I think, maybe should talk with Jack about this, but also it doesn't look like we even use these counts)
+--bias is also called by Jenny but isn't available in the current version. It attempts to generate a model for sequence bias and correct the abundances accordingly.
+
+I should check and see if these reads are stranded. How could I do this? 
+There are lots of tools out there... I am going to try and use it with the current Kallisto loaded and if that doesn't work I'll install an older version of kallisto that they require. It says that it takes a few minutes to run. Here is the github doc - https://github.com/signalbash/how_are_we_stranded_here
+The alignment seems to have been done against the hg38 ensembl 100 assembly of the human reference genome. I'll have to go back and get the legacy build but that honestly shouldn't even matter for the alignment problem. In addition to the FASTA file I will also need to download a gtf file. I made a folder under 'Data' where I put genome assembly files. I downloaded those with 
+curl -O ftp://ftp.ensembl.org/pub/release-100/gtf/homo_sapiens/Homo_sapiens.GRCh38.100.gtf.gz
+curl -O ftp://ftp.ensembl.org/pub/release-100/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+curl -O ftp://ftp.ensembl.org/pub/release-100/fasta/homo_sapiens/cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz
+I initially made a mistake, I needed the transcripts or cDNA fasta from ensembl
+
+Checking for strandedness... this failed because I had the new version of kallisto loaded and I want to use the version 0.44.0 and not 0.50.0. A heads up that using the $ which command will tell you where something is installed. Kallisto version will give you the version of the kallisto you are running.
+
+(base) lwallac2@d25wg0btj1g9 Geneome_Assemblies % check_strandedness --gtf Homo_sapiens.GRCh38.100.gtf --transcripts Homo_sapiens.GRCh38.cdna.all.fa --reads_1 /Volumes/fh/scratch/delete90/meshinchi_s/downloads/F126920/150bp/F126920_1_150bp_4_lanes.merge_chastity_passed.fastq.gz --reads_2 /Volumes/fh/scratch/delete90/meshinchi_s/downloads/F126920/150bp/F126920_2_150bp_4_lanes.merge_chastity_passed.fastq.gz  
+
+That individual is equal to PAREWJ. After this person I should probably check at least one or two more. 
+
+The run was halted with an error (that it seems others have seen in the past) but strandedness_check.txt reads .../Volumes/Macintosh HD/Volumes/fh/fast/meshinchi_s/workingDir/scripts/lwallac2/Data/Genome_Assemblies/stranded_test_F126920_1_150bp_4_lanes.merge_chastity_passed/stranded_test_F126920_1_150bp_4_lanes
+
+This is PairEnd Data
+Fraction of reads failed to determine: 0.1221
+Fraction of reads explained by "1++,1--,2+-,2-+": 0.0148
+Fraction of reads explained by "1+-,1-+,2++,2--": 0.8631
+
+I have two choices here, I could load a conda environment using an older version of python (3.6 for example)
+
+Or I could fork the repo, merge the pull request that seems to fix the issue and then load that as a package. Let's try this one!
+
+forking the repo... cloning the repo here... how do I merge a pull request from a different user? It's a small change so I could just make it on my own... I could try running this locally after making the changes...
+
+I was having trouble with running that locally and decided it would just be quicker to get a new conda environment with an older version of python and activate that and then run this script.
+
+conda create -n stranded_env python=3.6.2 anaconda
+
+conda activate stranded_env
+
+pip install how_are_we_stranded_here
+
+I was having trouble getting all the packages loaded in the new environment, I'm a little worried that the version will be wrong and it won't work again... I'll have to go back to 0.44.0
+
+So after getting Kallisto 0.44.0, getting a new conda environment that uses python 3.6.3 (which has a different engine for reading files in and doesn't share the same restriction around /n character)
+
+What is the result??? 
+
+When checking the FASTQ files from F126920 - TARGET-20-PAREWJ-09A-01R 
+This is PairEnd Data
+Fraction of reads failed to determine: 0.1221
+Fraction of reads explained by "1++,1--,2+-,2-+": 0.0148 (1.7% of explainable reads)
+Fraction of reads explained by "1+-,1-+,2++,2--": 0.8631 (98.3% of explainable reads)
+Over 90% of reads explained by "1+-,1-+,2++,2--"
+Data is likely RF/fr-firststrand
+
+Let's try the same thing for the F127266 - TARGET-20-PASYEJ-09A-01R
+This is PairEnd Data
+Fraction of reads failed to determine: 0.1202
+Fraction of reads explained by "1++,1--,2+-,2-+": 0.0259 (2.9% of explainable reads)
+Fraction of reads explained by "1+-,1-+,2++,2--": 0.8539 (97.1% of explainable reads)
+Over 90% of reads explained by "1+-,1-+,2++,2--"
+Data is likely RF/fr-firststrand
+
+So, I could run a few more files and that is probably a good idea but I think I can proceed now. 
+
+----------------------------
+Writing a Gizmo batch script
+----------------------------
+8/30/23
+
+Before I plug this all into a Nextflow pipeline, I need to write a batch script to send this to gizmo! 
+
+Let's get onto Rhino and poke around
+ssh -Y lwallac2@rhino
+Using the squeue command I see that many jobs are being run on gizmo 
+Let's write a basic bash script to see if I can get a job on gizmo, I won't want to get an interactive session going. 
+I wrote a small batch script to get this running on on gizmo. Running squeue -u lwallac2 will allow you to see the list of jobs that you have running on the cluster. This job happened to be runing on gizmok115, 
+   JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
+          28145340 campus-ne Kallisto lwallac2  R       0:04      1 gizmok115
+
+To run Kallisto, we'll need to get Jenny's environment (by docker image loaded)
+
+8.31.23 - Today the goal is to get the Docker container loaded and run a kallisto counts process and then start putting that together into a nextflow script
+
+This page was super useful in my understanding Docker at Fred Hutch - https://sciwiki.fredhutch.org/scicomputing/compute_environments/
+
+Because Docker requires root access, it cannot be run on shared compute environments such as Rhino / Gizmo. Instead, developers at LBL have developed a utility called Apptainer (formerly Singularity) which can be used to run Docker images within an environment like Rhino / Gizmo at Fred Hutch.
+
+Apptainer was previously called Singularity. Apptainer is a way to be able to run something like a Docker container in a shared compute environment and is therefore (unlike Docker) able to be run in the shared compute environment. Apptainer itself is a module and needs to be loaded to be used. After loading apptainer the module, we can pull a docker image and create that environment by referencing the local image file image.sif like so -> apptainer run image.sif
+
+So Jenny's image failed, this is because the entry point for this script is our labs AWS S3 bucket. I don't think that this is what I want to do. I have a couple options. I could either 1. create my own docker image and change the entry point or 2. not worry about using ubuntu and just run kallisto v45.0 from the loaded modules inside the compute cluster already. I also notice that one of the layers in here scripts uses an entry point of AWS S3 and one does not. I am going to remove the _latest version and load the _nextflow version and see if that doesn't work for me. 
+
+ml Apptainer 1.1.6
+apptainer pull docker://jennylsmith/kallistov45.0:nextflow 
+
+That worked! Now let's see if this will allow me to run a Kallisto count command on one of the counts files that I have stored in the scratch drive and if I can store that in another directory on either tmp or scratch
+
+I'll need to get a Kallisto index file first, do I want to generate one or do I want to use the one Jenny already has? I think I don't need to rebuild an index file. It just comes from a genome assembly, Jenny already references this one in the S3 bucket - gencode.v29_RepBase.v24.01.idx. I'll download this one and use it...
+aws s3 cp s3://fh-pi-meshinchi-s-eco-public/Reference_Data/Kallisto_Index/GRCh38.v29/gencode.v29_RepBase.v24.01.idx ./ when in the BCCA_File_Download folder... It's pretty large (2.6GB)
+
+It gave me the error - kallisto command not found. It's like it hasn't loaded the container with kallisto running yet... maybe Jenny's script is referencing the nextflow workflow and not the proper location for me to find the container? I just used the argument ml kallisto/0.45.0-foss-2018b which loads the kallisto 45 module and doesn't worry about using whatever operating system that Jenny was using. This run has taken around 22 minutes so far. I wonder if there is a way to speed this up, either by not using --fusion or using parallelization.
+Let's look at the parameters that Jenny passed to try and see how fast we can make this run. 
+
+9.1.23 - OK, we returned a few different files. 
+1. F126920_1_150bp_4_lanes.merge_chastity_passed.fastq.gz.kallisto copy.out - The output log for the run. It includes a lot of information about the run, the files that were used, the number of bootstraps etc.
+2. Abundance.tsv
+    I think that this is the main file we care for. This file contains estimated counts, transcripts per million and effective length. 
+    The counts file we have generated for F126920 has approximately 1,200 genes listed and the remainder appear to all be transcripts. There are around 20,000 rows in this file but I don't think that just accords to single transcripts. Maybe this is all the genes across the genome (rows) and if the gene has multiple transcripts they map to the row which corresponds to a gene. I'll have to look into the docs. I found another abundance.tsv file in the scratch 90 folder and I see the same pattern so that tells me I am on the right track. Let's do a word count and make sure that we are getting approximately the same number of transcripts. wc -l abundance.tsv reveals 207,827 which is identical to (not the 20,000 I thought I saw) the number of rows in the abundance file I generated. So the next item would be to convert this into a plain counts file but I don't think this concatenation will actually be that hard and the first thing I am going to want to do would be to store the FASTQs and BAMs on AWS.  
+3. Abundance.h5 - 'abundance.h5 is a HDF5 binary file containing run info, abundance esimates, bootstrap estimates, and transcript length information length. This file can be read in by sleuth'
+
+One thing that will certainly need to change is that the files that is output cannot simply be named abundance.tsv, it will need to have the sample name associated somehow. Let's look and see how Jenny did that. 
+
+But at this point I'm confident that the counts I am generating are good. Now it's time to see if we can do this for the entire manifest of files inside of a Nextflow script. The final part of the script would be to concatenate all the abundance files together into a larger counts file for this run of sequencing data. 
+
+-------------------------
+Writing a Nextflow Script
+-------------------------
+As always the SciWiki has a lot of great resources  
+    https://sciwiki.fredhutch.org/hdc/workflows/running/on_gizmo/
+    https://sciwiki.fredhutch.org/compdemos/nextflow/
+    https://github.com/FredHutch/workflow-template-nextflow
+
+While Jenny ran hers on AWS I am planning on running mine on Gizmo. One reason for this is I want to use the cluster here at The Hutch and while the data will end up on AWS eventually, it is first downloaded to the Scratch drive before being processed and I think this is the best place to perform the analysis. 
+
+The first step is to create a config file, they reccomend placing it somewhere that can be easily referenced and because this is project's directory is on the FAST drive I'll store it here (keeping in mind that this could in the future become a folder of config files somewhere else)
+
+My working directory will be /fh/scratch/delete90/meshinchi_s/lwallac2/Nextflow and this will be a location to host all the temp files creating during the run on Gizmo
+
+The tutorial mentions Nextflow Tower, let's check this out now... It sounds like a monitoring service for your pipelines. I think this could be useful but it also costs money so I'm not sure we want to pay for it if I can manually monitor the run using shell commands anyhow... Actually it doesn't seem like it is a paid service! Nice. 
+
+Made a configuration file - nextflow.gizmo.config
+    I could build a docker image here to match exactly what OS Jenny has used but I think that realistically using the same version of Kallisto is appropriate. 
+
+Write our Nextflow script - 
+
+Make a batch script to run the workflow on Gizmo - 
+Reccomends using Grabnode vs rhino but I think both of these are different than running a batch job using sbatch.
+
+Alright, I am following this example from Sam Minot that he has pushed to github
+The organization of his repo is 
+
+run.sh -> main.nf + nf.config -> module_x.nf -> script.sh
+
+The run script batches the main nextflow script to run on the cluster and that script's parameters are found inside the .config file. Below this layer there is a modules folder which holds nextflow scripts for each major process to occur within the main.nf (nextflow) workflow. Each module is a nextflow process based on a shell / python / R / etc script that will be the backend for the jobs that comprise the workflow.
+
+So I'm mirroring this where there is a modules folder with nextflow 'jobs' that rely on scripts inside the templates folder that host the actual scripts which run the individual jobs. main.nf will hold the code to run the whole process. These modules can run on several different templates at one time. 
+
+9.5.2023 - Git troubles...
+    After deleting a few files that were large and not neccessary for the repo, (some docker images and else) and then trying to commit to the Dev branch I was met with a divergence error... 
+    Your branch and 'origin/dev' have diverged,
+    and have 1 and 1 different commits each, respectively.
+    (use "git pull" to merge the remote branch into yours)
+    
