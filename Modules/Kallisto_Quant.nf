@@ -1,4 +1,4 @@
-#!/usr/bin/env 
+#!/usr/bin/env nexflow
 
 // Using DSL-2
 nextflow.enable.dsl=2

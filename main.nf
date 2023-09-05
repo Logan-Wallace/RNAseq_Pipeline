@@ -24,11 +24,12 @@ Required Arguments:
 
     Output Location:
     --output <PATH>     Path to directory where output files will be written
-
+    
+    """.stripIndent()
 }
 
 
 //Main workflow
 workflow{
-
+    
 }

@@ -1,4 +1,4 @@
-#! usr/bin/env python
+#! usr/bin/env python3
 # Author: Logan Wallace lwallac2@uoregon.edu, lwallac2@fredhutch.org
 # Date: 8/24/2023
 
@@ -21,8 +21,8 @@ parser = argparse.ArgumentParser(
                     description='The purpose of this program is to read in a manifest file and make sure that all of our listed samples are evident within the location we think we have downloaded them',
                     epilog='Good Luck!')
 
-parser.add_argument("-m", "--manifest_filename", help = "The filename of the manifest containing sample names of the RNAseq samples", type = str, default = "/Volumes/fh/fast/meshinchi_s/workingDir/scripts/lwallac2/Python/BCCA_File_Download/RNAseq_Processing_Pipeline/Meshinchi_GSC-2251A_RNA_Online_Submission-1784_21Aug2023_JS.xlsx")
-parser.add_argument("-d", "--directory", help = "The path to the directory where you are checking to see that the BAM/FASTQs have been downloaded", type = str, default = "/Volumes/fh/scratch/delete90/meshinchi_s/downloads")
+parser.add_argument("-m", "--manifest_filename", help = "The filename of the manifest containing sample names of the RNAseq samples", type = str, default = "/fh/fast/meshinchi_s/workingDir/scripts/lwallac2/Python/RNAseq_Pipeline/Data_Logs/Meshinchi_GSC-2251A_RNA_Online_Submission-1784_21Aug2023_JS.xlsx")
+parser.add_argument("-d", "--directory", help = "The path to the directory where you are checking to see that the BAM/FASTQs have been downloaded", type = str, default = "/fh/scratch/delete90/meshinchi_s/downloads")
 
 args = parser.parse_args()
 
@@ -37,7 +37,7 @@ def checkFile(directory, sample):
         for fileType in fileTypes:
             manifest.at[sample, fileType] = "NOT_YET_SEQUENCED"
         return
-
+    
     sampleName = mappingDict[sample]
     patterns = {
         'READ_1': re.compile(re.escape(sampleName) + r'.*1.*.fastq.gz', re.IGNORECASE),
@@ -58,12 +58,13 @@ def checkFile(directory, sample):
         if not wasFound:
             manifest.at[sample, fileType] = "MISSING"
 
+    manifest['Mapping'][sample] = mappingDict[sample]
 
 
 
 # This chunk of code should only be neccessary temporarily. Once the file mapping has been provided as a part of the manifest we should no longer need for this dictionary to be created but for now I want to make sure that this code is on track and working. I also want to batch this to the Rhino compute node and make sure that I can add it to a Nextflow script before all of our files are in. 
 # Load in the file mapping and create a dictionary so that we can query for a file in the dictionary and map it back to the rowname of the excel spreadsheet
-mappingFilename = "/Volumes/fh/fast/meshinchi_s/workingDir/scripts/lwallac2/Python/BCCA_File_Download/RNAseq_Processing_Pipeline/FileMapper.txt"
+mappingFilename = "/fh/fast/meshinchi_s/workingDir/scripts/lwallac2/Python/RNAseq_Pipeline/Data_Logs/FileMapper.txt"
 mappingDict = {}
 try:
     with open(mappingFilename) as mappingFile: # Recall that the sheet indexes are 0 based
@@ -110,6 +111,7 @@ manifest.set_index('Sample ID', inplace = True)
 manifest['READ_1'] = 'NA'
 manifest['READ_2'] = 'NA'
 manifest['BAM'] = 'NA'
+manifest['Mapping'] = 'NA'
 
 for sample in samples:
     
@@ -117,5 +119,5 @@ for sample in samples:
 
 print(manifest.head)
 
-manifest.to_excel("/Volumes/fh/fast/meshinchi_s/workingDir/scripts/lwallac2/Python/BCCA_File_Download/RNAseq_Processing_Pipeline/sample_manifest.xlsx")
+manifest.to_excel("/fh/fast/meshinchi_s/workingDir/scripts/lwallac2/Python/RNAseq_Pipeline/sample_manifest_trial.xlsx")
 
