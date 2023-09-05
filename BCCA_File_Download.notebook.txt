@@ -321,4 +321,8 @@ So I'm mirroring this where there is a modules folder with nextflow 'jobs' that 
     Your branch and 'origin/dev' have diverged,
     and have 1 and 1 different commits each, respectively.
     (use "git pull" to merge the remote branch into yours)
-    
+
+The final resolution here was to entirely copy the contents of my repo, delete the old repository and create a new one, load the contents from the old one to the new one and then push all the commits. I've also added a .gitignore file that ignores the entire contents of the Data_Logs/ folder.
+
+Now to get back to work!! 
+

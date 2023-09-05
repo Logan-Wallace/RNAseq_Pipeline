@@ -11,12 +11,24 @@ include { kallisto_quant } from './kallisto_quant.nf'
 def helpMessage() {
     log.info """
 Usage:
-    
-nextflow run 
+nextflow run <ARGUMENTS>
 
 Required Arguments:
     
+    Input Data:
+    --manifest <PATH>   Path to manifest file containing sample information
+                        Formatted as ...
     
+    Reference Data:
+    --index <PATH>      Path to kallisto index file
 
+    Output Location:
+    --output <PATH>     Path to directory where output files will be written
+
+}
+
+
+//Main workflow
+workflow{
 
 }
