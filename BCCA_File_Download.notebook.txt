@@ -326,3 +326,5 @@ The final resolution here was to entirely copy the contents of my repo, delete t
 
 Now to get back to work!! 
 
+So I have a manifest file that has a sample mapping feature. How can I get a channgel of input from this file to run reads through kallisto_quant?
+    What does Chanel.fromPath() do?

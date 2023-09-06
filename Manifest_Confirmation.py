@@ -40,8 +40,8 @@ def checkFile(directory, sample):
     
     sampleName = mappingDict[sample]
     patterns = {
-        'READ_1': re.compile(re.escape(sampleName) + r'.*1.*.fastq.gz', re.IGNORECASE),
-        'READ_2': re.compile(re.escape(sampleName) + r'.*2.*.fastq.gz', re.IGNORECASE),
+        'READ_1': re.compile(re.escape(sampleName) + r'_1.*.fastq.gz', re.IGNORECASE),
+        'READ_2': re.compile(re.escape(sampleName) + r'_2.*.fastq.gz', re.IGNORECASE),
         'BAM': re.compile(re.escape(sampleName) + r'.*.bam', re.IGNORECASE)
     }
 
@@ -51,7 +51,8 @@ def checkFile(directory, sample):
         for file in files:
             for fileType, pattern in patterns.items():
                 if pattern.match(file):
-                    manifest.at[sample, fileType] = "+"
+                    # If we find a file that matched the pattern, add this to the manifest
+                    manifest.at[sample, fileType] = os.path.join(root, file)
                     found[fileType] = True
 
     for fileType, wasFound in found.items():
