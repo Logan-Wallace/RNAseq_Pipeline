@@ -24,10 +24,10 @@ set -eou pipefail
 # None of the above was working, so I'm just going to load the Kallisto module here
 ml kallisto/0.45.0-foss-2018b
 
-index="/fh/fast/meshinchi_s/workingDir/scripts/lwallac2/Python/BCCA_File_Download/RNAseq_Processing_Pipeline/gencode.v29_RepBase.v24.01.idx"
-output="/fh/fast/meshinchi_s/workingDir/scripts/lwallac2/Python/BCCA_File_Download/RNAseq_Processing_Pipeline/"
-R1="/fh/scratch/delete90/meshinchi_s/downloads/F126920/150bp/F126920_1_150bp_4_lanes.merge_chastity_passed.fastq.gz"
-R2="/fh/scratch/delete90/meshinchi_s/downloads/F126920/150bp/F126920_2_150bp_4_lanes.merge_chastity_passed.fastq.gz"
+# index="/fh/fast/meshinchi_s/workingDir/scripts/lwallac2/Python/BCCA_File_Download/RNAseq_Processing_Pipeline/gencode.v29_RepBase.v24.01.idx"
+# output="/fh/fast/meshinchi_s/workingDir/scripts/lwallac2/Python/BCCA_File_Download/RNAseq_Processing_Pipeline/"
+# R1="/fh/scratch/delete90/meshinchi_s/downloads/F126920/150bp/F126920_1_150bp_4_lanes.merge_chastity_passed.fastq.gz"
+# R2="/fh/scratch/delete90/meshinchi_s/downloads/F126920/150bp/F126920_2_150bp_4_lanes.merge_chastity_passed.fastq.gz"
 
 
 kallisto quant -i $index -o $output -b 30 -t 4 --fusion --bias --rf-stranded $R1 $R2 2> $(basename "$R1").kallisto.out

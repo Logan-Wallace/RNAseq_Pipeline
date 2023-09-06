@@ -327,4 +327,19 @@ The final resolution here was to entirely copy the contents of my repo, delete t
 Now to get back to work!! 
 
 So I have a manifest file that has a sample mapping feature. How can I get a channgel of input from this file to run reads through kallisto_quant?
-    What does Chanel.fromPath() do?
+    What does Chanel.fromPath() do? This creates a queue channel. An asynchronous unidirectional FIFO queue from one operation to another. If you want to read about it, find that here - https://training.nextflow.io/basic_training/channels/#channel-types. But this is the way to create a flow of the files from the manifest to the kallisto operation inside the workflow. 
+
+    I asked Phind to help me write this... 
+        One tricky part is that the file is actually under a sub directory and not itself in the main file folder. So the pattern would be something like
+            FASTQ_Pattern = {params.fastq_folder}/{sample_id}/150bp/{sample_id}_{1,2}*.fastq.gz. I think the most robust method to do this was to re-write the python script to add the whole path to the found file in the directory so that we can create a channel from this in the nextflow script. This should be reliable if the file structure changes in the future. 
+
+Creating a channel from a manifest file...
+
+One interesting thing about passing variables to a 'job' or process
+    I needed to pass both a channel with the file locations of pairs of fastq files to kallisto_quant.nf as well as some inputs from the user. Because I created those at the beginning of main.nf I can use them inside any of the sub-processes and I don't need to pass them directly in the invocation to any particular process along with the channel. 
+
+command to run the nextflow process
+
+lwallac2@rhino03:/fh/fast/meshinchi_s/workingDir/scripts/lwallac2/Python/RNAseq_Pipeline$ nextflow run main.nf --manifest sample_manifest_trial.csv --index gencode.v29_RepBase.v.24.01.idx --output /fh/scratch/delete90/meshinchi_s/lwallac2/Nextflow/
+
+To batch this out to gizmo - sbatch run.sh (the above setting have been plugged into the shell script)
