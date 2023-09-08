@@ -1,4 +1,5 @@
 # Data Log Folder #
 ###################
 Data_Logs/
-
+*.log*
+*.out
