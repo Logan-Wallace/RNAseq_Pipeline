@@ -3,9 +3,6 @@
 // Using DSL-2
 nextflow.enable.dsl=2
 
-// Import jobs that will comprise workflow
-include { kallisto_quant } from './Modules/Kallisto_Quant.nf'
-
 // Give some help messages for the user
 def helpMessage() {
     log.info """
@@ -27,32 +24,23 @@ Required Arguments:
     """.stripIndent()
 }
 
+// Create a channel for the read pairs from the manifest
+Channel
+    .fromPath(params.manifest)
+    .splitCsv(header: true, sep: ',')
+    .map { row -> tuple(row.READ_1, row.READ_2) }
+    .set { read_pairs }
+
+// Return counts files from kallisto_quant 
+process kallisto_quant{
+    input:
+    tuple path(READ_1), path(READ_2)
+
+    script:
+    template "Kallisto_Quant.sh"
+}
 
 //Main workflow
-workflow{
-
-    // print the manifest to the terminal
-    println params.manifest
-
-    Channel
-        .fromPath(params.manifest)
-        .splitCSV(header: true, sep: ',')
-        .map { row -> tuple(row.READ_1, row.READ_2) }
-        .set{ read_pairs }  
-    // // If all the neccessary params have been found
-    // if (params.manifest && params.output && params.index){
-    //     // Create a channel called 'read_pairs' to pass the file paths for read_1 and read_2 from the manifest to the kallisto_quant process
-    //     Channel
-    //         .fromPath(params.manifest)
-    //         .splitCSV(header: true, sep: ',')
-    //         .map { row -> tuple(row.READ_1, row.READ_2) }
-    //         .set{ read_pairs }  
-    // } else {
-    //     // If not all the neccessary params have been found, print the help message
-    //     helpMessage()
-    // }
-
-    // Run the kallisto_quant process for each pair of reads using the read_pairs channel  
-    //kallisto_quant(read_pairs)
-
+workflow {
+  read_pairs.view()
 }

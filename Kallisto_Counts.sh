@@ -30,7 +30,7 @@ ml kallisto/0.45.0-foss-2018b
 # R2="/fh/scratch/delete90/meshinchi_s/downloads/F126920/150bp/F126920_2_150bp_4_lanes.merge_chastity_passed.fastq.gz"
 
 
-kallisto quant -i $index -o $output -b 30 -t 4 --fusion --bias --rf-stranded $R1 $R2 2> $(basename "$R1").kallisto.out
+kallisto quant -i $index -o $output -b 30 -t 4 --fusion --bias --rf-stranded $READ_1 $READ_2 2> $(basename "$READ_1").kallisto.out
 #  --fusion --bias --rf-stranded  $R1 $R2 2> ${R1.simpleName}.kallisto.out
 
 echo "Hello, Logan. Your script ran on Rhino!"
